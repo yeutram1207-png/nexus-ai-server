@@ -2,10 +2,10 @@ import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from google import genai
+from google.genai import types
 
 app = FastAPI(title="Nexus AI Server (Gemini)", version="1.0")
 
-# Lấy Gemini API Key từ biến môi trường trên Render
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
@@ -23,14 +23,13 @@ def process_nexus_ai(request: AIRequest):
     
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-1.5-flash",
             contents=request.prompt,
-            config={
-                "system_instruction": "You are Nexus AI, a professional iOS reverse engineering and tweak development assistant."
-            }
+            config=types.GenerateContentConfig(
+                system_instruction="You are Nexus AI, a professional iOS reverse engineering and tweak development assistant.",
+            ),
         )
-        answer = response.text
-        return {"status": "success", "response": answer}
+        return {"status": "success", "response": response.text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
