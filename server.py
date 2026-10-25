@@ -23,7 +23,7 @@ def process_nexus_ai(request: AIRequest):
     
     try:
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-3.8-flash",
             contents=request.prompt,
             config={
                 "system_instruction": "You are Nexus AI, a professional iOS reverse engineering and tweak development assistant."
