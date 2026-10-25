@@ -3,9 +3,8 @@ import requests
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-app = FastAPI(title="Nexus AI Server (Direct REST)", version="1.0")
+app = FastAPI(title="Nexus AI Server (Optimized)", version="1.0")
 
-# Lấy Gemini API Key từ biến môi trường trên Render
 api_key = os.environ.get("GEMINI_API_KEY")
 
 class AIRequest(BaseModel):
@@ -13,34 +12,34 @@ class AIRequest(BaseModel):
 
 @app.get("/")
 def home():
-    return {"message": "Nexus Direct REST Server is live!"}
+    return {"message": "Nexus Optimized Server is live!"}
 
 @app.post("/api/nexus-ai")
 def process_nexus_ai(request: AIRequest):
     if not api_key:
-        raise HTTPException(status_code=500, detail="Gemini API Key chưa được cấu hình trên server.")
+        raise HTTPException(status_code=500, detail="API Key chưa được cấu hình.")
     
-    # Endpoint REST chuẩn của Google Gemini sử dụng bản v1 (ổn định tuyệt đối)
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key={api_key}"
+    # Sử dụng model gemini-1.5-flash với endpoint v1 ổn định nhất
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
     
     payload = {
         "contents": [{
             "parts": [{"text": request.prompt}]
-        }],
-        "systemInstruction": {
-            "parts": [{"text": "You are Nexus AI, a professional iOS reverse engineering and tweak development assistant."}]
-        }
+        }]
     }
     
     try:
-        res = requests.post(url, json=payload, timeout=20)
+        res = requests.post(url, json=payload, timeout=12)
         data = res.json()
         
-        if res.status_code != 200:
-            raise HTTPException(status_code=500, detail=str(data))
+        if res.status_code == 200 and "candidates" in data:
+            answer = data["candidates"][0]["content"]["parts"][0]["text"]
+            return {"status": "success", "response": answer}
+        else:
+            # Trả thẳng lỗi chi tiết từ Google về app để thấy rõ nguyên nhân nếu có
+            error_msg = data.get("error", {}).get("message", str(data))
+            raise HTTPException(status_code=500, detail=error_msg)
             
-        answer = data["candidates"][0]["content"]["parts"][0]["text"]
-        return {"status": "success", "response": answer}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
