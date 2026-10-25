@@ -19,12 +19,11 @@ def home():
 @app.post("/api/nexus-ai")
 def process_nexus_ai(request: AIRequest):
     if not api_key:
-        raise HTTPException(status_code=500, detail="Gemini API Key not configured on server.")
-    
+        raise HTTPException(status_code=500, detail="Gemini API Key not configured.")
+
     try:
-        # Sử dụng đúng chuẩn client.chats hoặc gọi text trực tiếp qua gemini-2.5-flash
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.8-flash",
             contents=request.prompt,
             config=types.GenerateContentConfig(
                 system_instruction="You are Nexus AI, a professional iOS reverse engineering and tweak development assistant.",
