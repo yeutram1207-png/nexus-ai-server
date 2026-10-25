@@ -1,44 +1,143 @@
+
 import os
+import logging
+
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from openai import OpenAI
+from pydantic import BaseModel, Field
+from openai import OpenAI, APIConnectionError, APIStatusError
 
-app = FastAPI(title="Nexus Groq Server", version="1.0")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("nexus")
 
-api_key = os.environ.get("GROQ_API_KEY")
+app = FastAPI(title="Nexus AI Backend", version="1.1")
 
-client = OpenAI(
-    api_key=api_key,
-    base_url="https://api.groq.com/openai/v1"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
+GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+GROQ_MODEL = os.getenv(
+    "GROQ_MODEL", "openai/gpt-oss-20b"
 )
 
+client = (
+    OpenAI(
+        api_key=GROQ_API_KEY,
+        base_url=GROQ_BASE_URL,
+        timeout=30.0,
+        max_retries=1,
+    )
+    if GROQ_API_KEY
+    else None
+)
+
+
 class AIRequest(BaseModel):
-    prompt: str
+    prompt: str = Field(min_length=1, max_length=12000)
+
 
 @app.get("/")
 def home():
-    return {"message": "Nexus Groq Free Server is live!"}
+    return {
+        "status": "ok",
+        "service": "Nexus AI Backend",
+    }
+
+
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "provider_configured": client is not None,
+        "model": GROQ_MODEL,
+    }
+
 
 @app.post("/api/nexus-ai")
 def process_nexus_ai(request: AIRequest):
-    if not api_key:
-        raise HTTPException(status_code=500, detail="GROQ_API_KEY chưa được cấu hình trên Render.")
-    
-    try:
-        # Dùng tên model chuẩn tuyệt đối này của Groq (chắc chắn 100% tồn tại)
-        response = client.chat.completions.create(
-            model="llama3-8b-8192",
-            messages=[
-                {"role": "system", "content": "You are Nexus AI, a professional iOS reverse engineering and tweak development assistant."},
-                {"role": "user", "content": request.prompt}
-            ]
+    if client is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Backend chưa được cấu hình API key.",
         )
-        answer = response.choices[0].message.content
-        return {"status": "success", "response": answer}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+
+    try:
+        response = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are Nexus AI, a professional "
+                        "iOS development and binary analysis "
+                        "assistant. Provide accurate, clear "
+                        "and security-conscious answers."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": request.prompt,
+                },
+            ],
+        )
+
+        answer = response.choices[0].message.content or ""
+
+        return {
+            "status": "success",
+            "response": answer,
+        }
+
+    except APIStatusError as exc:
+        logger.error(
+            "Groq API returned HTTP %s",
+            exc.status_code,
+        )
+
+        if exc.status_code == 401:
+            raise HTTPException(
+                status_code=502,
+                detail="Groq API key không hợp lệ.",
+            ) from exc
+
+        if exc.status_code == 429:
+            raise HTTPException(
+                status_code=429,
+                detail="Groq đang giới hạn yêu cầu. Vui lòng thử lại sau.",
+            ) from exc
+
+        if exc.status_code == 404:
+            raise HTTPException(
+                status_code=502,
+                detail=(
+                    "Model không khả dụng. Hãy kiểm tra "
+                    "GROQ_MODEL trong Render Environment."
+                ),
+            ) from exc
+
+        raise HTTPException(
+            status_code=502,
+            detail="Nhà cung cấp AI trả về lỗi.",
+        ) from exc
+
+    except APIConnectionError as exc:
+        logger.error("Unable to connect to Groq API")
+        raise HTTPException(
+            status_code=502,
+            detail="Không thể kết nối dịch vụ AI. Hãy thử lại.",
+        ) from exc
+
+    except Exception as exc:
+        logger.exception("Unexpected Nexus backend error")
+        raise HTTPException(
+            status_code=500,
+            detail="Lỗi nội bộ của Nexus AI.",
+        ) from exc
+
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("app:app", host="0.0.0.0", port=port)
+
+    port = int(os.environ.get("PORT", "8000"))
+    uvicorn.run(
+        "app:app",
+        host="0.0.0.0",
+        port=port,
+    )
