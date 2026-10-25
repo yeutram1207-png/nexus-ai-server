@@ -21,7 +21,7 @@ def process_nexus_ai(request: AIRequest):
         raise HTTPException(status_code=500, detail="Gemini API Key chưa được cấu hình trên server.")
     
     # Endpoint REST chuẩn của Google Gemini sử dụng bản v1 (ổn định tuyệt đối)
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key={api_key}"
     
     payload = {
         "contents": [{
