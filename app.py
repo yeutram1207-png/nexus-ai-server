@@ -1,45 +1,33 @@
 import os
-import requests
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from google import genai
 
-app = FastAPI(title="Nexus AI Server (Optimized)", version="1.0")
+app = FastAPI(title="Nexus AI Server", version="1.0")
 
+# Khởi tạo client Gemini chính thức từ SDK
 api_key = os.environ.get("GEMINI_API_KEY")
+client = genai.Client(api_key=api_key) if api_key else None
 
 class AIRequest(BaseModel):
     prompt: str
 
 @app.get("/")
 def home():
-    return {"message": "Nexus Optimized Server is live!"}
+    return {"message": "Nexus Official SDK Server is live!"}
 
 @app.post("/api/nexus-ai")
 def process_nexus_ai(request: AIRequest):
-    if not api_key:
-        raise HTTPException(status_code=500, detail="API Key chưa được cấu hình.")
-    
-    # Sử dụng model gemini-1.5-flash với endpoint v1 ổn định nhất
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
-    
-    payload = {
-        "contents": [{
-            "parts": [{"text": request.prompt}]
-        }]
-    }
+    if not client:
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY chưa được cấu hình trên Render.")
     
     try:
-        res = requests.post(url, json=payload, timeout=12)
-        data = res.json()
-        
-        if res.status_code == 200 and "candidates" in data:
-            answer = data["candidates"][0]["content"]["parts"][0]["text"]
-            return {"status": "success", "response": answer}
-        else:
-            # Trả thẳng lỗi chi tiết từ Google về app để thấy rõ nguyên nhân nếu có
-            error_msg = data.get("error", {}).get("message", str(data))
-            raise HTTPException(status_code=500, detail=error_msg)
-            
+        # Gọi mô hình gemini-2.5-flash qua SDK chính thức
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=request.prompt,
+        )
+        return {"status": "success", "response": response.text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
