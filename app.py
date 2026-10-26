@@ -157,7 +157,7 @@ class HookRequest(BaseModel):
 
 
 class CommandRequest(BaseModel):
-    command: Literal["/ipa", "/dylib", "/anti"]
+    command: Literal["/ipa", "/dylib", "/antigun"]
     report: str = Field(min_length=1, max_length=20000)
     question: str = Field(default="", max_length=2000)
 
