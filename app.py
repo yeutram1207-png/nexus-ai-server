@@ -108,8 +108,8 @@ Output PHẢI bao gồm, sau phần phân tích:
 Code first. Complete, compilable. Không "không tự tạo offset" — thiếu
 thì dùng fallback. Không "không cung cấp". Real iOS toolchain.
 """,
-    "/anti": """
-Phân tích báo cáo anti-cheat theo hướng kiểm toán bảo mật:
+    "/antigun": """
+Phân tích báo cáo anti-gun theo hướng kiểm toán bảo mật:
 nhận diện thành phần, hành vi quan sát được, dấu hiệu đáng ngờ,
 giới hạn của kết quả và phương án kiểm thử được phép.
 Không cung cấp hướng dẫn né tránh hoặc vô hiệu hóa cơ chế bảo vệ.
