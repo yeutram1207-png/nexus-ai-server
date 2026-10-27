@@ -17,13 +17,14 @@ log = logging.getLogger("nexus")
 API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 BASE_URL = "https://api.groq.com/openai/v1"
 
-PRIMARY = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b").strip()
+# Cập nhật model mặc định sang model chuẩn và mạnh mẽ nhất của Groq hiện tại
+PRIMARY = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile").strip()
 HOOK_MODEL = os.getenv("GROQ_HOOK_MODEL", PRIMARY).strip()
 
 FALLBACKS = [
     x.strip()
     for x in os.getenv(
-        "GROQ_FALLBACK_MODELS", "openai/gpt-oss-20b"
+        "GROQ_FALLBACK_MODELS", "llama-3.3-70b-versatile"
     ).split(",")
     if x.strip()
 ]
@@ -107,8 +108,8 @@ class HookRequest(BaseModel):
 
 class CommandRequest(BaseModel):
     command: Literal["/ipa", "/dylib", "/antigun", "/arm"]
-    report: str = Field(default="", max_length=20000)     # Cho phép trống
-    question: str = Field(default="", max_length=2000)    # Cho phép trống, tránh lỗi 422
+    report: str = Field(default="", max_length=20000)
+    question: str = Field(default="", max_length=2000)
 
 
 # ---------------- AI ENGINE ----------------
@@ -250,7 +251,6 @@ def nexus_command(req: CommandRequest):
             detail="Thiếu dữ liệu phân tích hoặc câu hỏi trong request.",
         )
 
-    # Nếu người dùng gọi lệnh mà bỏ trống câu hỏi, gán mặc định để AI phân tích dữ liệu RAM
     if not question:
         question = "Hãy phân tích dữ liệu hiện tại trong RAM theo lệnh này."
 
