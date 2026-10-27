@@ -139,7 +139,7 @@ Giải thích cách xác minh bằng công cụ phù hợp.
 Không tự suy đoán địa chỉ hoặc cấu trúc chưa có dữ liệu.
 """,
 
-    "/antigun": """
+    "/anti": """
 Phân tích các cơ chế kiểm tra môi trường chạy,
 anti-debug, anti-cheat và kiểm tra tính toàn vẹn
 dưới góc độ kiểm toán và kiểm thử được cho phép.
@@ -191,7 +191,7 @@ class CommandRequest(BaseModel):
     command: Literal[
         "/ipa",
         "/dylib",
-        "/antigun",
+        "/anti",
         "/arm",
     ]
     report: str = Field(
