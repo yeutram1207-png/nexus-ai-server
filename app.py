@@ -44,7 +44,7 @@ client: Optional[OpenAI] = (
     if API_KEY else None
 )
 
-app = FastAPI(title="Nexus AI Backend", version="2.3.2")
+app = FastAPI(title="Nexus AI Backend", version="2.3.3")
 
 
 # ---------------- PROMPTS (FLEXIBLE & DYNAMIC) ----------------
@@ -67,7 +67,6 @@ Không bịa đặt offset hoặc prototype.
 Trả lời bằng tiếng Việt, tập trung vào kỹ thuật lập trình hệ thống iOS.
 """
 
-# Chuyển đổi các prompt lệnh thành hướng dẫn chuyên môn, mở để AI trò chuyện tự nhiên
 COMMAND_PROMPTS = {
     "/ipa": """
 Bạn đang thực hiện phân tích cấu trúc gói phần mềm ứng dụng IPA (định dạng, sơ đồ thành phần, thư viện liên kết, symbols, tham chiếu chéo). 
@@ -108,8 +107,8 @@ class HookRequest(BaseModel):
 
 class CommandRequest(BaseModel):
     command: Literal["/ipa", "/dylib", "/antigun", "/arm"]
-    report: str = Field(default="", max_length=20000)
-    question: str = Field(min_length=1, max_length=2000)
+    report: str = Field(default="", max_length=20000)     # Cho phép trống
+    question: str = Field(default="", max_length=2000)    # Cho phép trống, tránh lỗi 422
 
 
 # ---------------- AI ENGINE ----------------
@@ -199,7 +198,7 @@ def root():
     return {
         "status": "ok",
         "service": "Nexus AI Backend",
-        "version": "2.3.2",
+        "version": "2.3.3",
     }
 
 
@@ -251,9 +250,12 @@ def nexus_command(req: CommandRequest):
             detail="Thiếu dữ liệu phân tích hoặc câu hỏi trong request.",
         )
 
+    # Nếu người dùng gọi lệnh mà bỏ trống câu hỏi, gán mặc định để AI phân tích dữ liệu RAM
+    if not question:
+        question = "Hãy phân tích dữ liệu hiện tại trong RAM theo lệnh này."
+
     system_prompt = CORE_PROMPT + "\n" + COMMAND_PROMPTS[req.command]
 
-    # Xây dựng prompt kết hợp dữ liệu từ RAM/phiên làm việc và câu hỏi thực tế của người dùng
     user_prompt_parts = [f"Lệnh hệ thống: {req.command}"]
     
     if report:
@@ -262,11 +264,7 @@ def nexus_command(req: CommandRequest):
             f"<BEGIN_DATA>\n{report}\n<END_DATA>"
         )
     
-    if question:
-        user_prompt_parts.append(f"Yêu cầu / Câu hỏi của người dùng: {question}")
-    else:
-        user_prompt_parts.append("Yêu cầu: Hãy phân tích các dữ liệu trên một cách chi tiết.")
-
+    user_prompt_parts.append(f"Yêu cầu / Câu hỏi của người dùng: {question}")
     user_prompt = "\n\n".join(user_prompt_parts)
 
     answer, model = ask_ai(system_prompt, user_prompt, PRIMARY)
