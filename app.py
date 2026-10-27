@@ -1,4 +1,3 @@
-
 import os
 import re
 import logging
@@ -29,10 +28,10 @@ BASE_URL = "https://api.groq.com/openai/v1"
 
 API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 
-# Sử dụng model llama-3.1-8b-instant làm mặc định để đảm bảo tương thích
+# Model chính xác của bạn
 PRIMARY = os.getenv(
     "GROQ_MODEL",
-    "llama-3.1-8b-instant",
+    "openai/gpt-oss-120b",
 ).strip()
 
 HOOK_MODEL = os.getenv(
@@ -40,11 +39,12 @@ HOOK_MODEL = os.getenv(
     PRIMARY,
 ).strip()
 
+# Khôi phục đầy đủ danh sách fallback chứa Qwen và GPT OSS dự phòng
 FALLBACKS = list(dict.fromkeys(
     model.strip()
     for model in os.getenv(
         "GROQ_FALLBACK_MODELS",
-        "llama-3.1-8b-instant,gemma2-9b-it",
+        "qwen/qwen3.8-27b,openai/gpt-oss-20b",
     ).split(",")
     if model.strip()
 ))
@@ -77,7 +77,7 @@ client: Optional[OpenAI] = (
 
 app = FastAPI(
     title="Nexus AI Backend",
-    version="2.4.1",
+    version="2.4.2",
     description="Nexus AI API powered by Groq",
 )
 
@@ -104,7 +104,6 @@ def optimize_report(report_text: str, max_chars: int = 6000) -> str:
     in_sub_section = False
 
     for line in lines:
-        # Nhận diện các phần quan trọng
         if any(keyword in line for keyword in ["📦", "⚙️", "Public Symbols", "OBJC_CLASS", "OBJC_METACLASS", "AnoSDK"]):
             important_lines.append(line)
             in_sub_section = False
@@ -112,7 +111,6 @@ def optimize_report(report_text: str, max_chars: int = 6000) -> str:
             in_sub_section = True
             if "sub_" in line:
                 sub_count += 1
-                # Chỉ lấy 15 hàm sub_ đầu tiên làm mẫu ngữ cảnh
                 if sub_count <= 15:
                     important_lines.append(line)
         else:
@@ -124,7 +122,6 @@ def optimize_report(report_text: str, max_chars: int = 6000) -> str:
 
     optimized_text = "\n".join(important_lines)
 
-    # Nếu vẫn vượt quá max_chars sau khi thu gọn, thực hiện cắt lát an toàn
     if len(optimized_text) > max_chars:
         optimized_text = optimized_text[:max_chars] + "\n... [Báo cáo đã được cắt bớt phần đuôi] ..."
 
@@ -235,7 +232,7 @@ class CommandRequest(BaseModel):
     ]
     report: str = Field(
         default="",
-        max_length=50000,  # Cho phép nhận chuỗi lớn từ App trước khi xử lý tối ưu
+        max_length=50000,
     )
     question: str = Field(
         default="",
@@ -386,7 +383,7 @@ def root():
     return {
         "status": "ok",
         "service": "Nexus AI Backend",
-        "version": "2.4.1",
+        "version": "2.4.2",
         "docs": "/docs",
         "health": "/health",
     }
@@ -475,7 +472,6 @@ def nexus_command(req: CommandRequest):
     if not question:
         question = "Hãy phân tích dữ liệu được cung cấp và nêu rõ các điểm cần lưu ý."
 
-    # Tự động lọc và tối ưu hóa report để chống lỗi 413
     optimized_report = optimize_report(raw_report, max_chars=6000) if raw_report else ""
 
     system_prompt = (
@@ -524,3 +520,4 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.environ.get("PORT", "8000")),
     )
+
